@@ -18,7 +18,7 @@ module spi_dac #(
     output reg         SDI,
     output wire        LDAC,
 
-    output reg         finished,
+    output reg         finished, // single pulse
     output wire        busy
 );
 
@@ -36,7 +36,7 @@ module spi_dac #(
       STX_BITS + LOAD_BITS + RSV_BITS + DACSEL_BITS + DB16_BITS + DATA_BITS + TAIL_BITS;
 
   localparam [1:0] IDLE   = 2'b00;
-  localparam [1:0] LOAD   = 2'b01;
+  localparam [1:0] LOAD   = 2'b01; // new state, load new payload and assert SYNC pin
   localparam [1:0] SEND   = 2'b10;
   localparam [1:0] FINISH = 2'b11;
 
@@ -47,12 +47,14 @@ module spi_dac #(
   assign busy = (state != IDLE);
   assign LDAC = 1'b0;
 
+// ---- SCK Prescaler ----
   reg [$clog2(PRESCALE)-1:0] divcnt = 0;
   reg sck_q = CPOL;
   assign SCK = sck_q;
 
   reg edge_ce = 1'b0;
 
+// ---- shift register and counter----
   reg [BITLEN-1:0] shreg = {BITLEN{1'b0}};
   reg [$clog2(BITLEN*2+4)-1:0] cnt = 0;
 
@@ -70,6 +72,11 @@ module spi_dac #(
       current_data[15:0],
       {TAIL_BITS{1'b0}}
   };
+
+
+// ---- FSM ----
+// normal state transition
+// IDLE > LOAD > SEND > LOAD > SEND > LOAD > SEND > LOAD > SEND > FINISH
 
   always @(posedge clk) begin
     if (!reset_n) begin
@@ -106,16 +113,23 @@ module spi_dac #(
           end
         end
 
-        LOAD: begin
-          shreg  <= payload;
-          SDI    <= payload[BITLEN-1];
-          cnt    <= 0;
-          divcnt <= 0;
-          sck_q  <= CPOL;
-          state  <= SEND;
+        LOAD: begin // load payload and release sync pin.
+          CS            <= 1'b1; 
+          sck_q         <= CPOL;
+            if (divcnt == PRESCALE/2-1) begin
+                divcnt  <= 0;
+                shreg  <= payload;
+                SDI    <= payload[BITLEN-1];
+                state  <= SEND;
+                cnt    <= 0;
+            end else begin
+              divcnt  <= divcnt + 1;
+            end
         end
 
         SEND: begin
+          CS          <= 1'b0; //asseert sync!
+          
           if (cnt < BITLEN*2) begin
             if (divcnt == PRESCALE/2-1) begin
               divcnt  <= 0;
@@ -133,28 +147,14 @@ module spi_dac #(
               end
               cnt <= cnt + 1;
             end
-          end else begin
-            sck_q   <= CPOL;
-            edge_ce <= 1'b0;
-            cnt     <= cnt + 1;
-
-            if (cnt == BITLEN*2) begin
-              if (ch_cnt != 2'b11) begin
-                ch_cnt <= ch_cnt + 1;
-                shreg  <= payload;
-                SDI    <= payload[BITLEN-1];
-              end
+          end else begin //after transmission
+            if(ch_cnt != 2'b11) begin
+              ch_cnt <= ch_cnt + 1;
+              state <= LOAD;
+            end else begin
+              stata <= FINISH;
             end
-
-            if (cnt == (BITLEN*2+2)) begin
-              if (ch_cnt == 2'b11) begin
-                state <= FINISH;
-              end else begin
-                cnt    <= 0;
-                divcnt <= 0;
-                sck_q  <= CPOL;
-              end
-            end
+          end
           end
         end
 
@@ -162,8 +162,12 @@ module spi_dac #(
           CS       <= 1'b1;
           SDI      <= 1'b0;
           finished <= 1'b1;
-          state    <= IDLE;
-          cnt      <= 0;
+          if (divcnt == PRESCALE/2-1) begin
+              divcnt  <= 0;
+              state  <= IDLE;
+          end else begin
+            divcnt  <= divcnt + 1;
+          end
         end
 
         default: begin

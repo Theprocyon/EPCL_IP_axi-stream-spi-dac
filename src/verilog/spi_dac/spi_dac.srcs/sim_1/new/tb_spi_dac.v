@@ -63,7 +63,7 @@ module tb_spi_dac_100m_to_50m;
     s_axis_tvalid <= 1'b0;
 
     @(posedge finished);
-    repeat (20) @(posedge clk);
+    repeat (200) @(posedge clk);
     $finish;
   end
 
