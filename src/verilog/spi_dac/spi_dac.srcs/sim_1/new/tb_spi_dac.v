@@ -4,14 +4,14 @@ module tb_spi_dac_100m_to_50m;
 
   localparam real CLK_PERIOD_NS = 10.0;
 
-  localparam [15:0] SAMPLE0 = 16'h55AA;
-  localparam [15:0] SAMPLE1 = 16'hA5A5;
+  localparam [63:0] SAMPLE0 = {16'hDDDD, 16'hCCCC, 16'hBBBB, 16'hAAAA};
+  localparam [63:0] SAMPLE1 = {16'h1234, 16'h5678, 16'h9ABC, 16'hDEF0};
 
   reg clk = 1'b0;
   reg reset = 1'b0;
   always #(CLK_PERIOD_NS/2.0) clk = ~clk;
 
-  reg  [15:0] s_axis_tdata  = 16'd0;
+  reg  [63:0] s_axis_tdata  = 64'd0;
   reg         s_axis_tvalid = 1'b0;
   wire        s_axis_tready;
 
@@ -21,7 +21,6 @@ module tb_spi_dac_100m_to_50m;
 
   spi_dac #(
     .PRESCALE(2),
-    .DAC_CH(2'b00),
     .TAIL_BITS(2),
     .CPOL(0),
     .CPHA(1)
