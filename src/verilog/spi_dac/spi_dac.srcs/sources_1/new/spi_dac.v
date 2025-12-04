@@ -109,7 +109,7 @@ module spi_dac #(
             ch_cnt        <= 2'b00;
             s_axis_tready <= 1'b0;
             state         <= LOAD;
-            CS            <= 1'b0;
+            CS            <= 1'b1; // 251205 keep CS high before LOAD
           end
         end
 
@@ -152,11 +152,10 @@ module spi_dac #(
               ch_cnt <= ch_cnt + 1;
               state <= LOAD;
             end else begin
-              stata <= FINISH;
+              state <= FINISH;
             end
           end
           end
-        end
 
         FINISH: begin
           CS       <= 1'b1;
