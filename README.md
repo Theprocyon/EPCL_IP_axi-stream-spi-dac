@@ -1,87 +1,41 @@
-# SPI DAC Driver IP (DAC7565 / DAC8565)
+# SPI DAC Driver IP
 
-This repository provides a lightweight **SPI DAC driver IP** for Xilinx FPGAs, designed to interface with **TI DAC7565 / DAC8565** digital-to-analog converters.  
-The module uses an **AXI4-Stream slave interface** for seamless data feeding, and outputs an SPI sequence tailored to the DAC protocol.
+SPI interface IP for TI DAC7565/DAC8565 quad-channel DACs. Receives four 16-bit DAC values as a single 64-bit word via AXI4-Stream and sequentially outputs SPI frames to update all channels.
 
----
+## I/O Interface
 
-## Features
+![IP Diagram](pics/spi_dac.svg)
 
-- **4-Channel Support**  
-  - Accepts 64-bit data via AXI4-Stream for simultaneous update of all four DAC channels
-  - One AXI transaction triggers sequential SPI writes to channels A, B, C, and D
+### Module Parameters
 
-- **AXI4-Stream Interface**  
-  - 64-bit data input via `s_axis_tdata`  
-  - Handshake with `tvalid/tready`  
-  - Automatic transfer start and finish signaling  
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `PRESCALE` | SPI clock divider (SCK freq = clk / PRESCALE) | 2 |
+| `TAIL_BITS` | Additional zero bits after data frame | 2 |
+| `CPOL` | SPI clock polarity | 0 |
+| `CPHA` | SPI clock phase | 1 |
 
-- **Configurable SPI Protocol**  
-  - Clock polarity (CPOL) and phase (CPHA) options  
-  - Parameterized prescaler (`PRESCALE`) to set SCK frequency  
-  - Adjustable tail bits after data frame  
+### Input Ports
 
-- **Targeted for DAC7565 / DAC8565**  
-  - Generates proper frame format (STX, LOADMODE, DAC channel select, etc.)  
-  - 16-bit data mode supported  
+| Port | Width | Description |
+|------|-------|-------------|
+| `clk` | 1 | System clock |
+| `reset_n` | 1 | Active-low reset |
+| `s_axis_tdata` | 64 | DAC data (ChD[63:48], ChC[47:32], ChB[31:16], ChA[15:0]) |
+| `s_axis_tvalid` | 1 | AXI-Stream valid signal |
 
-- **Outputs**  
-  - `CS` (chip select)  
-  - `SCK` (serial clock)  
-  - `SDI` (serial data input)  
-  - `LDAC` (load DAC, fixed low by default)  
+### Output Ports
 
-- **Status Signals**  
-  - `busy`: high while SPI transfer is active  
-  - `finished`: pulse after transfer completes  
-
----
-
-## Module Specification
-
-| Parameter    | Description                                                                 | Default |
-|--------------|-----------------------------------------------------------------------------|---------|
-| `PRESCALE`   | SPI clock divider (SCK = fabric_clk / PRESCALE)                            | `2`     |
-| `TAIL_BITS`  | Extra zero bits appended to the frame                                      | `2`     |
-| `CPOL`       | Clock polarity (0 = idle low, 1 = idle high)                               | `0`     |
-| `CPHA`       | Clock phase (0 = sample on first edge, 1 = sample on second edge)          | `0`     |
-
-### AXI4-Stream Slave Interface
-| Signal          | Direction | Description                                    |
-|-----------------|-----------|------------------------------------------------|
-| `s_axis_tdata`  | Input     | 64-bit data word (16-bit per channel)          |
-| `s_axis_tvalid` | Input     | Valid signal for input data                    |
-| `s_axis_tready` | Output    | Ready signal (low when busy)                   |
-
-**Data Mapping:**
-- Bits [15:0]   → Channel A
-- Bits [31:16]  → Channel B
-- Bits [47:32]  → Channel C
-- Bits [63:48]  → Channel D
-
-### SPI & Control Outputs
-| Signal    | Direction | Description                             |
-|-----------|-----------|-----------------------------------------|
-| `CS`      | Output    | Active-low chip select                  |
-| `SCK`     | Output    | SPI clock (generated internally)        |
-| `SDI`     | Output    | Serial data line                        |
-| `LDAC`    | Output    | Load DAC (fixed 0, can be tied external)|
-| `busy`    | Output    | High while SPI transfer is in progress  |
-| `finished`| Output    | High for one cycle after transfer ends  |
-
----
-
-## Usage
-
-1. Connect the `AXI4-Stream` interface to your data source (e.g., DMA, custom logic).  
-2. Provide a fabric clock and active-low reset.  
-3. Configure parameters as needed (`PRESCALE`, `TAIL_BITS`, etc.).  
-4. Each 64-bit AXI transaction triggers a sequence of four SPI writes to all DAC channels (A→B→C→D).  
-5. The `busy` signal remains high for the entire sequence until all four channels are updated.  
-6. Monitor `finished` signal to synchronize with your system.  
-
----
+| Port | Width | Description |
+|------|-------|-------------|
+| `s_axis_tready` | 1 | AXI-Stream ready signal (low when busy) |
+| `CS` | 1 | SPI chip select (active-low) |
+| `SCK` | 1 | SPI clock |
+| `SDI` | 1 | SPI data output (MOSI) |
+| `LDAC` | 1 | DAC load signal (fixed low) |
+| `finished` | 1 | Transfer complete pulse |
+| `busy` | 1 | Transfer in progress indicator |
 
 ## License
 
-This project is released under the MIT License. See [LICENSE](LICENSE) for details.
+MIT License. See [LICENSE.md](LICENSE.md) for details.
