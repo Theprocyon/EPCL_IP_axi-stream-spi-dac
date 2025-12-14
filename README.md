@@ -36,6 +36,17 @@ SPI interface IP for TI DAC7565/DAC8565 quad-channel DACs. Receives four 16-bit 
 | `finished` | 1 | Transfer complete pulse |
 | `busy` | 1 | Transfer in progress indicator |
 
+## Verification
+
+Verified with post-synthesis functional simulation at 100MHz clock frequency.
+
+**Target Device:** Xilinx Zynq-7030 (xc7z030fbg676-3)
+
+| Resource | Used | Available | Utilization |
+|----------|------|-----------|-------------|
+| Slice LUTs | 45 | 78,600 | 0.06% |
+| Slice Registers | 103 | 157,200 | 0.07% |
+
 ## License
 
 MIT License. See [LICENSE.md](LICENSE.md) for details.
