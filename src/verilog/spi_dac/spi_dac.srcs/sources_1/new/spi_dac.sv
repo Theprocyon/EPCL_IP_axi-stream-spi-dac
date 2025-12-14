@@ -213,7 +213,7 @@ module spi_dac #(
                         
                         if ((CPHA == 0 && SCK != CPOL) || (CPHA == 1 && SCK == CPOL)) begin
                              shreg <= {shreg[TOTAL_BIT_LEN-2:0], 1'b0};
-                             SDI   <= shreg[TOTAL_BIT_LEN-2];
+                             SDI   <= shreg[TOTAL_BIT_LEN-1];
                         end
                         
                         if (bit_edge_cnt == TOTAL_BIT_LEN*2 - 1) begin
